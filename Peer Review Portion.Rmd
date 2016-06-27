@@ -1,0 +1,111 @@
+---
+title: "Peer Review Portion"
+author: "Taeyul Huh"
+date: "2016년 6월 26일"
+output: html_document
+---
+#Get Data 
+Import the caret package and training, testing data. 
+```{r}
+library(caret); 
+
+#read data in
+trainData <- read.csv("pml-training.csv")
+testData <- read.csv("pml-testing.csv")
+
+```
+
+
+#Divide training data
+For validation purpose, divide the training data into two. 
+```{R}
+#conduct data partition 
+inTrain <- createDataPartition(y = trainData$classe, p = 0.75, list = FALSE)
+training <- trainData[inTrain,]
+testing <- trainData[-inTrain,]
+```
+
+#Data Trimming
+Before starting any model training, trim the data down to only the meaningful variables. 
+```{R}
+#eliminate first 2 columns (data order and user name) of data as they don't contribute to the predictions
+training <- training[,-(1:2)]
+```
+
+Continue to delete columns that hold majority NA values. 
+```{r}
+#eliminate columns that have more than 75% NA 
+naCols <- sapply(training, function(x) mean(is.na(x))) > 0.75
+training <- training[,naCols == FALSE]
+```
+
+Check for near zero variance predictors and delete them. 
+```{R}
+#check for near zero variance predictors
+nzvCols <- nearZeroVar(training)
+training <- training[,-nzvCols]
+```
+
+#Model Selection
+To address a classification problem, I chose the random forest model as it is known to have a high accuracy. 
+
+```{R}
+#train model on random forest
+modRf <- train(classe~., data= training, method = "rf")
+modRf$finalModel
+```
+
+Before applying the model, the validation data is trimmed in the same way the training data has been trimmed. 
+```{r}
+#apply same data trimming to testing data before testing the model
+testing <- testing[,-(1:2)]
+testing <- testing[,naCols == FALSE]
+testing <- testing[,-nzvCols]
+```
+
+Now, test the prediction and check through confusion matrix. 
+```{r}
+#try prediction
+pred <- predict(modRf, testing)
+
+#verify through confusion matrix
+confusionMatrix (testing$classe, pred)
+```
+
+The confusion matrix shows an accuracy of 99.92%. The resulting accuracy is satisfactory and now the model will be trained on the original training data. 
+
+#Model Application
+Prepare the original training and testing data through the same steps and
+make the 
+```{r}
+#for final applicatio of model, apply same data trimming to entire train and test dataset
+trainData <- trainData [,-(1:2)]
+testData <- testData [,-(1:2)]
+
+naCols2 <- sapply (trainData, function(x) mean(is.na(x))) > 0.75
+trainData <- trainData[,naCols2 == FALSE]
+testData <- testData[,naCols2 == FALSE]
+
+nzvCols2 <- nearZeroVar(trainData)
+trainData <- trainData[,-nzvCols2]
+testData <- testData[,-nzvCols2]
+```
+
+Now, the training. 
+
+```{r}
+#train model on entire train data set
+finalModRf <- train(classe~., trainData, method = "rf")
+
+```
+
+#Getting the predictions.
+Apply the model for final prediction. 
+```{r}
+#make prediction
+predFinal <- predict(finalModRf, newdata = testData)
+ 
+#View
+predFinal
+```
+
